@@ -67,7 +67,7 @@ def read_config_file():
    
     try:
         
-        with open(sys.argv[1], "r") as config_file:
+        with open("config.json") as config_file:
 
             settings = json.load(config_file)
 

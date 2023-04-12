@@ -233,13 +233,13 @@ def export_gene_scores_report():
     
     hash_md5 = hashlib.md5()
     
-    with open(sys.argv[1], "rb") as config:
+    with open("config.json", "rb") as config:
         
         for chunk in iter(lambda: config.read(4096), b""):
             
             hash_md5.update(chunk)
             
-    with open(sys.argv[1], "r") as config:
+    with open("config.json", "r") as config:
         
         report_name = "gene_prioritisation_report_" + hash_md5.hexdigest() + ".txt"
         report = open((di.GENE_PRIORITISATION_REPORT_DIRECTORY + report_name), "w")

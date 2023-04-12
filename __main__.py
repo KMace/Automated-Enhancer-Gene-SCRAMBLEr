@@ -44,6 +44,10 @@ def main():
     gene_data = rc.find_plateaus(gene_data)
     rc.export_convolutions(gene_data)
     rc.export_plateaus(gene_data)
+
+    compression_opts = dict(method='zip', archive_name='out.zip')
+    gene_data.to_csv('out.txt', index=False)
+
     #dv.gene_report(gene_data)
     
     

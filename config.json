@@ -1,0 +1,54 @@
+{
+    "results_directory" : "/Users/km34/Documents/Results",
+    "gene_prioritisation_report_directory" : "/Users/km34/Documents/Report",
+    
+    "gene_annotation_reference" : "/Users/km34/Documents/Automated-Enhancer-Gene-SCRAMBLEr-1/.gitignore/Homo_sapiens.GRCh38.109.gtf",
+    "regulatory_elements_reference" : "/Users/km34/Documents/Automated-Enhancer-Gene-SCRAMBLEr-1/.gitignore/HAP1_15_segments.bed",
+    "general_expression_by_cell_line_reference_path" : "/Users/km34/Documents/Automated-Enhancer-Gene-SCRAMBLEr-1/.gitignore/CCLE_expressions_22Q4.csv",
+    "specific_expression_by_cell_line_reference_path" : "/Users/km34/Documents/Automated-Enhancer-Gene-SCRAMBLEr-1/.gitignore/Expression_HAP1_c12.tsv",
+    "reference_genome" : "/Users/km34/Documents/Automated-Enhancer-Gene-SCRAMBLEr-1/.gitignore/genome.fa", 
+    
+    "cell_line_of_interest" : "HAP1",
+    "chromosomes_of_interest" : ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "X", "Y"],
+    "enhancer_epigenetic_flags_of_interest" : ["E11"],
+    "quiescent_epigenetic_flags_of_interest" : ["E8"],
+
+    "search_type" : "whole_gene",
+    "search_within_gene" : true,
+    "upstream_search" : 500000,
+    "downstream_search" : 500000,
+
+    "relative_std_weight" : 1,
+    "relative_anomalous_expression_weight" : 1,
+    "relative_enhancer_count_weight" : 1,
+    "relative_enhancer_proportion_weight" : 1,
+    "relative_cell_line_expression_weight" : 1,
+    "relative_gene_size_weight" : 1,
+
+    "enhancer_kernel_shape" : "guassian",
+    "enhancer_kernel_size_type" : "relative",
+    "absolute_enhancer_kernel_size" : 500,
+    "relative_enhancer_kernel_size" : 0.15,
+    "relative_enhancer_kernel_sigma" : 0.005,
+    "min_absolute_enhancer_cluster_width" : 100,
+    "min_enhancer_cluster_prominence" : 0.1,
+
+    "quiescent_kernel_shape" : "guassian",
+    "quiescent_kernel_size_type" : "relative",
+    "absolute_quiescent_kernel_size" : 500,
+    "relative_quiescent_kernel_size" : 0.15,
+    "relative_quiescent_kernel_sigma" : 0.015,
+    "min_absolute_quiescent_cluster_width" : 100,
+    "min_quiescent_cluster_prominence" : 0.1,
+
+    "sigmoidal_slope" : 1,
+    "sigmoidal_midpoint" : 1,
+    "cell_line_specific_expression_threshold" : 1,
+    "interferring_gene_overlaps" : false,
+
+    "enhancer_convolution" : 1,
+    "quiescent_convolution" : false,
+    "enhancer_convolution_weight" : 1,
+    "quiescent_convolution_weight" : 0.5,
+    "plateau_threshold" : 0.1
+}
