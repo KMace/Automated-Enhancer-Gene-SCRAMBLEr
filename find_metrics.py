@@ -52,35 +52,32 @@ def find_gene_sizes(genes):
     
     return genes
 
-def find_nearby_genes(gene_data):
+def find_interferring_genes(gene_data):
     
-    #For each gene, finds the nearest gene upstream and downstream, a threshold
-    #is set on whether a gene counts based on its expression within the cell
-    #line of interest, "Start" and "End" are generated for use with PyRanges
+    #For each gene, finds the nearest gene upstream and downstream
+    
+    print("Finding interferring genes...")
+    
+    #"Start" and "End" are generated for use with PyRanges
     #module, but are removed at the end of function
-    
-    print("Finding nearby genes...")
-    
     gene_data["Start"] = gene_data["Gene_start"]
     gene_data["End"] = gene_data["Gene_end"]
     
-    scaler = StandardScaler()
-    #Add a column for the scaled expression here and use it to filter the genes
-    
-    
-    genes_pr = pr.PyRanges(gene_data.loc[gene_data["Specific_gene_expression"] > di.CELL_LINE_SPECIFIC_EXPRESSION_THRESHOLD])
-    genes_nearest_upstream_pr = genes_pr.nearest(genes_pr, how = "upstream", suffix = "_upstream_interferrer", overlap = di.INTERFERRING_GENE_OVERLAPS)
-    genes_nearest_downstream_pr = genes_pr.nearest(genes_pr, how = "downstream", suffix = "_downstream_interferrer", overlap = di.INTERFERRING_GENE_OVERLAPS)
+    interferring_genes_pr = pr.PyRanges(gene_data.loc[gene_data["Specific_gene_expression"] > di.CELL_LINE_SPECIFIC_EXPRESSION_THRESHOLD])
+    genes_pr = pr.PyRanges(gene_data)
+    genes_nearest_upstream_pr = genes_pr.nearest(interferring_genes_pr, how = "upstream", suffix = "_upstream_interferring_gene", overlap = di.INTERFERRING_GENE_OVERLAPS)
+    genes_nearest_downstream_pr = genes_pr.nearest(interferring_genes_pr, how = "downstream", suffix = "_downstream_interferring_gene", overlap = di.INTERFERRING_GENE_OVERLAPS)
+
     genes_nearest_upstream = genes_nearest_upstream_pr.df
     genes_nearest_downstream = genes_nearest_downstream_pr.df
     
-    gene_data = pd.merge(gene_data, genes_nearest_upstream.loc[:, ["Gene_name", "Start_upstream_interferrer", "End_upstream_interferrer", "Gene_name_upstream_interferrer"]], on = "Gene_name", how = "inner")
-    gene_data = pd.merge(gene_data, genes_nearest_downstream.loc[:, ["Gene_name", "Start_downstream_interferrer", "End_downstream_interferrer", "Gene_name_downstream_interferrer"]], on = "Gene_name", how = "inner")
+    gene_data = pd.merge(gene_data, genes_nearest_upstream.loc[:, ["Gene_name", "Start_upstream_interferring_gene", "End_upstream_interferring_gene", "Gene_name_upstream_interferring_gene"]], on = "Gene_name", how = "inner")
+    gene_data = pd.merge(gene_data, genes_nearest_downstream.loc[:, ["Gene_name", "Start_downstream_interferring_gene", "End_downstream_interferring_gene", "Gene_name_downstream_interferring_gene"]], on = "Gene_name", how = "inner")
     
     if di.INTERFERRING_GENE_OVERLAPS == False:
         
-        gene_data = gene_data.loc[gene_data["End_upstream_interferrer"] < gene_data["Gene_start"]]
-        gene_data = gene_data.loc[gene_data["Start_downstream_interferrer"] > gene_data["Gene_end"]]
+        gene_data = gene_data.loc[gene_data["End_upstream_interferring_gene"] < gene_data["Gene_start"]]
+        gene_data = gene_data.loc[gene_data["Start_downstream_interferring_gene"] > gene_data["Gene_end"]]
         
     gene_data.drop(["Start", "End"], axis = 1)
         
@@ -101,8 +98,8 @@ def find_search_windows(genes):
         genes["Search_window_start"] = genes.apply(lambda gene : gene["Gene_start"] - di.UPSTREAM_SEARCH if gene["Strand"] == "+" else gene["Gene_start"] - di.DOWNSTREAM_SEARCH, axis = 1)
         genes["Search_window_end"] = genes.apply(lambda gene : gene["Gene_end"] + di.DOWNSTREAM_SEARCH if gene["Strand"] == "+" else gene["Gene_end"] + di.UPSTREAM_SEARCH, axis = 1)
         genes["Search_window_start"] = genes.apply(lambda gene : 0 if gene["Gene_start"] < 0 else gene["Search_window_start"], axis = 1)
-        genes["Search_window_start"] = genes.apply(lambda gene : gene["End_upstream_interferrer"] if gene["Search_window_start"] < gene["End_upstream_interferrer"] else gene["Search_window_start"], axis = 1)
-        genes["Search_window_end"] = genes.apply(lambda gene : gene["Start_downstream_interferrer"] if gene["Search_window_end"] > gene["Start_downstream_interferrer"] else gene["Search_window_end"], axis = 1)
+        genes["Search_window_start"] = genes.apply(lambda gene : gene["End_upstream_interferring_gene"] if gene["Search_window_start"] < gene["End_upstream_interferring_gene"] else gene["Search_window_start"], axis = 1)
+        genes["Search_window_end"] = genes.apply(lambda gene : gene["Start_downstream_interferring_gene"] if gene["Search_window_end"] > gene["Start_downstream_interferring_gene"] else gene["Search_window_end"], axis = 1)
             
         genes["Search_window_size"] = (genes["Search_window_end"] - genes["Search_window_start"])
         
@@ -113,13 +110,13 @@ def find_search_windows(genes):
         search_upstreams["Upstream_search_window_end"] = search_upstreams["Gene_start"]
         search_upstreams["Upstream_search_window_start"] = search_upstreams.apply(lambda upstream : upstream["Upstream_search_window_end"] - di.UPSTREAM_SEARCH if upstream["Strand"] == "+" else upstream["Upstream_search_window_end"] - di.DOWNSTREAM_SEARCH, axis = 1)
         search_upstreams["Upstream_search_window_start"] = search_upstreams.apply(lambda upstream : 0 if upstream["Upstream_search_window_start"] < 0 else upstream["Upstream_search_window_start"], axis = 1)
-        search_upstreams["Upstream_search_window_start"] = search_upstreams.apply(lambda upstream : upstream["End_upstream_interferrer"] if upstream["Upstream_search_window_start"] < upstream["End_upstream_interferrer"] else upstream["Upstream_search_window_start"], axis = 1)
+        search_upstreams["Upstream_search_window_start"] = search_upstreams.apply(lambda upstream : upstream["End_upstream_interferring_gene"] if upstream["Upstream_search_window_start"] < upstream["End_upstream_interferring_gene"] else upstream["Upstream_search_window_start"], axis = 1)
         
         search_upstreams["Upstream_search_window_size"] = search_upstreams["Upstream_search_window_end"] - search_upstreams["Upstream_search_window_start"]
         
         search_downstreams["Downstream_search_window_start"] = search_downstreams["Gene_end"]
         search_downstreams["Downstream_search_window_end"] = search_downstreams.apply(lambda downstream : downstream["Downstream_search_window_start"] + di.DOWNSTREAM_SEARCH if downstream.Strand == "+" else downstream["Downstream_search_window_start"] + di.UPSTREAM_SEARCH, axis = 1)
-        search_downstreams["Downstream_search_window_end"] = search_downstreams.apply(lambda downstream : downstream["Start_downstream_interferrer"] if downstream["Downstream_search_window_end"] > downstream["Start_downstream_interferrer"] else downstream["Downstream_search_window_end"], axis = 1)
+        search_downstreams["Downstream_search_window_end"] = search_downstreams.apply(lambda downstream : downstream["Start_downstream_interferring_gene"] if downstream["Downstream_search_window_end"] > downstream["Start_downstream_interferrer"] else downstream["Downstream_search_window_end"], axis = 1)
         
         search_downstreams["Downstream_search_window_size"] = search_downstreams["Downstream_search_window_end"] - search_downstreams["Downstream_search_window_start"]
         
@@ -131,8 +128,8 @@ def find_search_windows(genes):
         genes["Search_window_start"] = genes.apply(lambda gene : gene["Gene_start"] - di.UPSTREAM_SEARCH if gene["Strand"] == "+" else gene["Gene_start"] - di.DOWNSTREAM_SEARCH, axis = 1)
         genes["Search_window_end"] = genes.apply(lambda gene : gene["Gene_start"] + di.DOWNSTREAM_SEARCH if gene["Strand"] == "+" else gene["Gene_start"] + di.UPSTREAM_SEARCH, axis = 1)
         genes["Search_window_start"] = genes.apply(lambda gene : 0 if gene.Start < 0 else gene.Start, axis = 1)
-        genes["Search_window_start"] = genes.apply(lambda gene : gene["End_upstream_interferrer"] if gene["Search_window_start"] < gene["End_upstream_interferrer"] else gene["Search_window_start"], axis = 1)
-        genes["Search_window_end"] = genes.apply(lambda gene : gene["Start_downstream_interferrer"] if gene["Search_window_end"] > gene["Start_downstream_interferrer"] else gene["Search_window_end"], axis = 1)
+        genes["Search_window_start"] = genes.apply(lambda gene : gene["End_upstream_interferring_gene"] if gene["Search_window_start"] < gene["End_upstream_interferring_gene"] else gene["Search_window_start"], axis = 1)
+        genes["Search_window_end"] = genes.apply(lambda gene : gene["Start_downstream_interferring_gene"] if gene["Search_window_end"] > gene["Start_downstream_interferring_gene"] else gene["Search_window_end"], axis = 1)
         
         genes["Search_window_size"] = (genes["Search_window_end"] - genes["Search_window_start"])
         
@@ -146,7 +143,7 @@ def find_search_windows(genes):
         
     return genes
     
-def find_overlaps(elements, genes):
+def find_element_overlaps_within_search_window(elements, genes):
     
     #PyRanges is used to find specified element type overlaps within search
     #window given for each gene. "Start" and "End" are generated for PyRanges
@@ -190,7 +187,7 @@ def find_nearby_enhancer_densities(gene_data, overlaps):
 
     return gene_data
     
-def gene_scoring(genes):
+def calculate_interest_score(genes):
     
     #Various attributes of each gene are scaled and normallised, before being
     #weighted and combined into an interest score. The export_gene_scores_report
@@ -215,15 +212,18 @@ def gene_scoring(genes):
     scaled_genes = scaled_genes.sort_values("Interest_score", ascending = False)
     
     genes = pd.merge(genes, scaled_genes.loc[:, ["Gene_name", "Interest_score"]], on = "Gene_name")
-    genes = genes.sort_values("Interest_score", ascending = False).reset_index(drop=True)
+    genes = genes.sort_values("Interest_score", ascending = False).reset_index()
     
-    genes.loc[:, ["Gene_name", "Std", "Anomalous_score", "Specific_gene_expression", "Enhancer_count", "Enhancer_proportion", "Gene_size", "Interest_score"]].to_csv(di.RESULTS_DIRECTORY + "gene_scores.tsv", sep = "\t", index = False)
+    
+    genes.loc[:, ["Gene_name", "Std", "Anomalous_score", "Specific_gene_expression", "Enhancer_count", "Enhancer_proportion", "Gene_size", "Interest_score"]].to_csv(di.RESULTS_DIRECTORY + "gene_scores.tsv", sep = "\t", index = True)
     
     export_gene_scores_report()
     
     return genes
     
 def export_gene_scores_report():
+    
+    #Idealy this will not read from file but from passed argument
     
     #Md5 checksum of config file is generated. Gene prioritisation report file
     #is created and checksum is included in name to differentiate different
