@@ -31,22 +31,19 @@ def main():
     gene_data = fm.count_overlaps_per_gene(gene_data, enhancer_overlaps, "Enhancer")
     gene_data = fm.find_nearby_enhancer_densities(gene_data, enhancer_overlaps)
     gene_data = fm.calculate_interest_score(gene_data)
-    
-    gene_data = rc.convolution(gene_data, enhancer_overlaps, "Enhancer")
 
-    del enhancer_overlaps
+    fm.export_gene_scores_report(0.9, 0, 1.1, 0.2, 0.5, 0.6, 0.01)
     
-    gene_data = rc.find_plateaus(gene_data)
-    rc.export_convolutions(gene_data)
-    rc.export_plateaus(gene_data)
+    #gene_data = rc.convolution(gene_data, enhancer_overlaps, "Enhancer")
 
-    compression_opts = dict(method='zip', archive_name='out.zip')
-    gene_data.to_csv('out.txt', index=False)
+    #del enhancer_overlaps
+    
+    #gene_data = rc.find_plateaus(gene_data)
+    #rc.export_convolutions(gene_data)
+    #rc.export_plateaus(gene_data)
 
-    #dv.gene_report(gene_data)
-    
-    
-    #enhancer_convolution, recombination_convolution = rc.overlay_convolutions(rc.enhancer_convolution(gene_data, enhancer_overlaps), rc.quiescent_convolution(gene_data, quiescent_overlaps)) 
+    #compression_opts = dict(method='zip', archive_name='out.zip')
+    #gene_data.to_csv('out.txt', index=False)
     
 if __name__ == "__main__":
     main()

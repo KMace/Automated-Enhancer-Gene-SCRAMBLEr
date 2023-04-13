@@ -4,6 +4,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.compose import ColumnTransformer
 import hashlib
 import sys
+import string
+import random
 
 import data_initialisation as di
 import region_convolutions as rc
@@ -182,37 +184,50 @@ def calculate_interest_score(genes):
     
     
     genes.loc[:, ["Gene_name", "Std", "Anomalous_score", "Specific_gene_expression", "Enhancer_count", "Enhancer_proportion", "Gene_size", "Interest_score"]].to_csv(di.RESULTS_DIRECTORY + "gene_scores.tsv", sep = "\t", index = True)
-    
-    export_gene_scores_report()
-    
+        
     return genes
     
-def export_gene_scores_report():
+def export_gene_scores_report(sd, annomolous_score, enhancer_count, 
+                     enhancer_proportion, gene_expression, gene_size, threshold):
     
-    #Idealy this will not read from file but from passed argument
+    #Ideally this will not read from file but from passed argument
     
     #Md5 checksum of config file is generated. Gene prioritisation report file
     #is created and checksum is included in name to differentiate different
     #configs. Report saved in given location.
     
     print("Exporting gene prioritisation report...")
+
+    identifier = "." + get_random_string(8) + ".txt"
+    weights = "weights: sd, annomolous_score, enhancer_count, enhancer_proportion, gene_expression, gene_size, threshold: " + str(sd) + ', ' + str(annomolous_score) + ', ' + str(enhancer_count) + ', ' + str(enhancer_proportion) + ', ' + str(gene_expression) + ', ' + str(gene_size) + ', ' + str(threshold)
     
-    hash_md5 = hashlib.md5()
+    file = open(di.GENE_PRIORITISATION_REPORT_DIRECTORY + identifier, "x") # create new unique file
+
+    with open((di.RESULTS_DIRECTORY + "gene_scores.tsv"), "r") as scores:
+        file.write(scores.read())
+        file.write(weights)
+
+    file.close()
     
-    with open("config.json", "rb") as config:
-        
-        for chunk in iter(lambda: config.read(4096), b""):
-            
-            hash_md5.update(chunk)
-            
-    with open("config.json", "r") as config:
-        
-        report_name = "gene_prioritisation_report_" + hash_md5.hexdigest() + ".txt"
-        report = open((di.GENE_PRIORITISATION_REPORT_DIRECTORY + report_name), "w")
-        report.write(config.read() + "\n")
-        
-        with open((di.RESULTS_DIRECTORY + "gene_scores.tsv"), "r") as scores:
-            
-            report.write(scores.read())
-            
-        report.close()
+    #with open("config.json", "rb") as config:
+    #    for chunk in iter(lambda: config.read(4096), b""):
+    #        hash_md5.update(chunk)
+    #        
+    #with open("config.json", "r") as config: # this is the z score stuff
+    #    report_name = "gene_prioritisation_report_" + identifier + ".txt"
+    #    print("Report name ", report_name)
+
+    #    report = open((di.GENE_PRIORITISATION_REPORT_DIRECTORY + report_name + identifier), "w")
+    #    report.write(config.read() + "\n")
+    #    
+    #    with open((di.RESULTS_DIRECTORY + "gene_scores.tsv"), "r") as scores:
+    #        report.write(scores.read())
+    #        
+    #    report.close()
+
+def get_random_string(length):
+    # choose from all lowercase letter
+    letters = string.ascii_lowercase
+    result_str = ''.join(random.choice(letters) for i in range(length))
+
+    return result_str
