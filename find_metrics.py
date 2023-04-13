@@ -1,3 +1,4 @@
+import string
 import pandas as pd
 import pyranges as pr
 from sklearn.preprocessing import StandardScaler
@@ -5,9 +6,13 @@ from sklearn.compose import ColumnTransformer
 import hashlib
 import sys
 
+import random
+
 import data_initialisation as di
 import region_convolutions as rc
 import data_visualisation as dv
+
+
     
 def find_mean(expression_data):
     
@@ -63,10 +68,10 @@ def find_interferring_genes(gene_data):
     gene_data["Start"] = gene_data["Gene_start"]
     gene_data["End"] = gene_data["Gene_end"]
     
-    interferring_genes_pr = pr.PyRanges(gene_data.loc[gene_data["Specific_gene_expression"] > di.CELL_LINE_SPECIFIC_EXPRESSION_THRESHOLD])
+    interferring_genes = pr.PyRanges(gene_data.loc[gene_data["Specific_gene_expression"] > di.CELL_LINE_SPECIFIC_EXPRESSION_THRESHOLD])
     genes_pr = pr.PyRanges(gene_data)
-    genes_nearest_upstream_pr = genes_pr.nearest(interferring_genes_pr, how = "upstream", suffix = "_upstream_interferring_gene", overlap = di.INTERFERRING_GENE_OVERLAPS)
-    genes_nearest_downstream_pr = genes_pr.nearest(interferring_genes_pr, how = "downstream", suffix = "_downstream_interferring_gene", overlap = di.INTERFERRING_GENE_OVERLAPS)
+    genes_nearest_upstream_pr = genes_pr.nearest(interferring_genes, how = "upstream", suffix = "_upstream_interferring_gene", overlap = di.INTERFERRING_GENE_OVERLAPS)
+    genes_nearest_downstream_pr = genes_pr.nearest(interferring_genes, how = "downstream", suffix = "_downstream_interferring_gene", overlap = di.INTERFERRING_GENE_OVERLAPS)
 
     genes_nearest_upstream = genes_nearest_upstream_pr.df
     genes_nearest_downstream = genes_nearest_downstream_pr.df
@@ -213,40 +218,53 @@ def calculate_interest_score(genes):
     
     genes = pd.merge(genes, scaled_genes.loc[:, ["Gene_name", "Interest_score"]], on = "Gene_name")
     genes = genes.sort_values("Interest_score", ascending = False).reset_index()
-    
-    
+
+
     genes.loc[:, ["Gene_name", "Std", "Anomalous_score", "Specific_gene_expression", "Enhancer_count", "Enhancer_proportion", "Gene_size", "Interest_score"]].to_csv(di.RESULTS_DIRECTORY + "gene_scores.tsv", sep = "\t", index = True)
-    
-    export_gene_scores_report()
-    
+        
     return genes
     
-def export_gene_scores_report():
+def export_gene_scores_report(sd, annomolous_score, enhancer_count, 
+                     enhancer_proportion, gene_expression, gene_size, threshold):
     
-    #Idealy this will not read from file but from passed argument
+    #Ideally this will not read from file but from passed argument
     
     #Md5 checksum of config file is generated. Gene prioritisation report file
     #is created and checksum is included in name to differentiate different
     #configs. Report saved in given location.
     
     print("Exporting gene prioritisation report...")
+
+    identifier = "." + get_random_string(8) + ".txt"
+    weights = "weights: sd, annomolous_score, enhancer_count, enhancer_proportion, gene_expression, gene_size, threshold: " + str(sd) + ', ' + str(annomolous_score) + ', ' + str(enhancer_count) + ', ' + str(enhancer_proportion) + ', ' + str(gene_expression) + ', ' + str(gene_size) + ', ' + str(threshold)
     
-    hash_md5 = hashlib.md5()
+    file = open(di.GENE_PRIORITISATION_REPORT_DIRECTORY + identifier, "x") # create new unique file
+
+    with open((di.RESULTS_DIRECTORY + "gene_scores.tsv"), "r") as scores:
+        file.write(scores.read())
+        file.write(weights)
+
+    file.close()
     
-    with open(sys.argv[1], "rb") as config:
-        
-        for chunk in iter(lambda: config.read(4096), b""):
-            
-            hash_md5.update(chunk)
-            
-    with open(sys.argv[1], "r") as config:
-        
-        report_name = "gene_prioritisation_report_" + hash_md5.hexdigest() + ".txt"
-        report = open((di.GENE_PRIORITISATION_REPORT_DIRECTORY + report_name), "w")
-        report.write(config.read() + "\n")
-        
-        with open((di.RESULTS_DIRECTORY + "gene_scores.tsv"), "r") as scores:
-            
-            report.write(scores.read())
-            
-        report.close()
+    #with open("config.json", "rb") as config:
+    #    for chunk in iter(lambda: config.read(4096), b""):
+    #        hash_md5.update(chunk)
+    #        
+    #with open("config.json", "r") as config: # this is the z score stuff
+    #    report_name = "gene_prioritisation_report_" + identifier + ".txt"
+    #    print("Report name ", report_name)
+
+    #    report = open((di.GENE_PRIORITISATION_REPORT_DIRECTORY + report_name + identifier), "w")
+    #    report.write(config.read() + "\n")
+    #    
+    #    with open((di.RESULTS_DIRECTORY + "gene_scores.tsv"), "r") as scores:
+    #        report.write(scores.read())
+    #        
+    #    report.close()
+
+def get_random_string(length):
+    # choose from all lowercase letter
+    letters = string.ascii_lowercase
+    result_str = ''.join(random.choice(letters) for i in range(length))
+
+    return result_str

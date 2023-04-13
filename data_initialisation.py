@@ -6,7 +6,8 @@ import numpy as np
 
 import find_metrics as fm
 
-def read_config_file():
+def read_config_file(sd, annomolous_score, enhancer_count, 
+                     enhancer_proportion, gene_expression, gene_size, threshold):
     
     #Generates global variables, reads in json file, assigns data to them based
     #on lines in config file.
@@ -64,11 +65,18 @@ def read_config_file():
     global ENHANCER_CONVOLUTION_WEIGHT
     global QUIESCENT_CONVOLUTION_WEIGHT
     global PLATEAU_THRESHOLD
+
+    # Assign arguments - interest score metrics - here
+    STD_WEIGHT = sd
+    ANOMALOUS_EXPRESSION_WEIGHT = annomolous_score
+    ENHANCER_COUNT_WEIGHT = enhancer_count
+    ENHANCER_PROPORTION_WEIGHT = enhancer_proportion
+    CELL_LINE_EXPRESSION_WEIGHT = gene_expression
+    GENE_SIZE_WEIGHT = gene_size
+    PLATEAU_THRESHOLD = threshold
    
     try:
-        
-        with open(sys.argv[1], "r") as config_file:
-
+        with open("config.json", "r") as config_file:
             settings = json.load(config_file)
 
         RESULTS_DIRECTORY = settings["results_directory"]
@@ -88,13 +96,6 @@ def read_config_file():
         SEARCH_WITHIN_GENE = settings["search_within_gene"]
         UPSTREAM_SEARCH = settings["upstream_search"]
         DOWNSTREAM_SEARCH = settings["downstream_search"]
-
-        STD_WEIGHT = settings["relative_std_weight"]
-        ANOMALOUS_EXPRESSION_WEIGHT = settings["relative_anomalous_expression_weight"]
-        ENHANCER_COUNT_WEIGHT = settings["relative_enhancer_count_weight"]
-        ENHANCER_PROPORTION_WEIGHT = settings["relative_enhancer_proportion_weight"]
-        CELL_LINE_EXPRESSION_WEIGHT = settings["relative_cell_line_expression_weight"]
-        GENE_SIZE_WEIGHT = settings["relative_gene_size_weight"]
 
         ENHANCER_KERNEL_SHAPE = settings["enhancer_kernel_shape"]
         ENHANCER_KERNEL_SIZE_TYPE = settings["enhancer_kernel_size_type"]
@@ -121,11 +122,9 @@ def read_config_file():
         QUIESCENT_CONVOLUTION = settings["quiescent_convolution"]
         ENHANCER_CONVOLUTION_WEIGHT = settings["enhancer_convolution_weight"]
         QUIESCENT_CONVOLUTION_WEIGHT = settings["quiescent_convolution_weight"]
-        PLATEAU_THRESHOLD = settings["plateau_threshold"]
             
     except:
-        
-        print("ERROR: Config file could not be read.")
+        raise("ERROR: Config file could not be read.")
         
 def read_gene_annotations():
     
