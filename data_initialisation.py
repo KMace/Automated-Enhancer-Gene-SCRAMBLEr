@@ -27,7 +27,6 @@ def read_config_file():
     global QUIESCENT_EPIGENETIC_FLAGS_OF_INTEREST
 
     global SEARCH_TYPE
-    global SEARCH_WITHIN_GENE
     global UPSTREAM_SEARCH
     global DOWNSTREAM_SEARCH
 
@@ -43,24 +42,17 @@ def read_config_file():
     global ABSOLUTE_ENHANCER_KERNEL_SIZE
     global RELATIVE_ENHANCER_KERNEL_SIZE
     global RELATIVE_ENHANCER_KERNEL_SIGMA
-    global MIN_ABSOLUTE_ENHANCER_CLUSTER_WIDTH
-    global MIN_ENHANCER_CLUSTER_PROMINENCE
     
     global QUIESCENT_KERNEL_SHAPE
     global QUIESCENT_KERNEL_SIZE_TYPE
     global ABSOLUTE_QUIESCENT_KERNEL_SIZE
     global RELATIVE_QUIESCENT_KERNEL_SIZE
     global RELATIVE_QUIESCENT_KERNEL_SIGMA
-    global MIN_ABSOLUTE_QUIESCENT_CLUSTER_WIDTH
-    global MIN_QUIESCENT_CLUSTER_PROMINENCE
 
-    global SIGMOIDAL_SLOPE
-    global SIGMOIDAL_MIDPOINT
     global CELL_LINE_SPECIFIC_EXPRESSION_THRESHOLD
     global INTERFERRING_GENE_OVERLAPS
     
     global ENHANCER_CONVOLUTION
-    global QUIESCENT_CONVOLUTION
     global ENHANCER_CONVOLUTION_WEIGHT
     global QUIESCENT_CONVOLUTION_WEIGHT
     global PLATEAU_THRESHOLD
@@ -85,7 +77,6 @@ def read_config_file():
         QUIESCENT_EPIGENETIC_FLAGS_OF_INTEREST = settings["quiescent_epigenetic_flags_of_interest"]
 
         SEARCH_TYPE = settings["search_type"]
-        SEARCH_WITHIN_GENE = settings["search_within_gene"]
         UPSTREAM_SEARCH = settings["upstream_search"]
         DOWNSTREAM_SEARCH = settings["downstream_search"]
 
@@ -101,24 +92,17 @@ def read_config_file():
         ABSOLUTE_ENHANCER_KERNEL_SIZE = settings["absolute_enhancer_kernel_size"]
         RELATIVE_ENHANCER_KERNEL_SIZE = settings["relative_enhancer_kernel_size"]
         RELATIVE_ENHANCER_KERNEL_SIGMA = settings["relative_enhancer_kernel_sigma"]
-        MIN_ABSOLUTE_ENHANCER_CLUSTER_WIDTH = settings["min_absolute_enhancer_cluster_width"]
-        MIN_ENHANCER_CLUSTER_PROMINENCE = settings["min_enhancer_cluster_prominence"]
 
         QUIESCENT_KERNEL_SHAPE = settings["quiescent_kernel_shape"]
         QUIESCENT_KERNEL_SIZE_TYPE = settings["quiescent_kernel_size_type"]
         ABSOLUTE_QUIESCENT_KERNEL_SIZE = settings["absolute_quiescent_kernel_size"]
         RELATIVE_QUIESCENT_KERNEL_SIZE = settings["relative_quiescent_kernel_size"]
         RELATIVE_QUIESCENT_KERNEL_SIGMA = settings["relative_quiescent_kernel_sigma"]
-        MIN_ABSOLUTE_QUIESCENT_CLUSTER_WIDTH = settings["min_absolute_quiescent_cluster_width"]
-        MIN_QUIESCENT_CLUSTER_PROMINENCE = settings["min_quiescent_cluster_prominence"]
 
-        SIGMOIDAL_SLOPE = settings["sigmoidal_slope"]
-        SIGMOIDAL_MIDPOINT = settings["sigmoidal_midpoint"]
         CELL_LINE_SPECIFIC_EXPRESSION_THRESHOLD = settings["cell_line_specific_expression_threshold"]
         INTERFERRING_GENE_OVERLAPS = settings["interferring_gene_overlaps"]
 
         ENHANCER_CONVOLUTION = settings["enhancer_convolution"]
-        QUIESCENT_CONVOLUTION = settings["quiescent_convolution"]
         ENHANCER_CONVOLUTION_WEIGHT = settings["enhancer_convolution_weight"]
         QUIESCENT_CONVOLUTION_WEIGHT = settings["quiescent_convolution_weight"]
         PLATEAU_THRESHOLD = settings["plateau_threshold"]
@@ -147,53 +131,7 @@ def read_gene_annotations():
         
     except:
         print("ERROR: Gene annotations file could not be read.")
-        
-def read_general_expression_data():
-    
-    #Assigns the expression-for-many-cell-types csv file to a pandas dataframe.
-        
-    print("Reading general expression file...")
 
-    try:
-        general_expression_data = pd.read_csv(GENERAL_EXPRESSION_BY_CELL_LINE_REFERENCE_PATH).transpose()
-        
-        return clean_general_expression_data(general_expression_data)  
-    
-    except:
-        print("ERROR: General expression data could not be read.")
-        
-def read_specific_expression_data():
-    
-    #Assigns the expression-for-cell-line-of-interest csv file to a pandas dataframe.
-        
-    print("Reading specific expression file...")
-
-    try:
-        specific_expression_data = pd.read_csv(SPECIFIC_EXPRESSION_BY_CELL_LINE_REFERENCE_PATH,
-                                               sep = "\t",
-                                               names = ["Gene_name", "Specific_gene_expression"],
-                                               skiprows = 1)
-        
-        return clean_specific_expression_data(specific_expression_data)    
-    
-    except:
-        print("ERROR: Specific expression data could not be read.")
-         
-def read_regulatory_elements():
-    
-    #Assigns the regulatory elements gff or bed file to a pandas dataframe.
-    
-    print("Reading regulatory elements file...")
-
-    try:
-        regulatory_elements = pd.read_csv(REGULATORY_ELEMENTS_ANNOTATION_REFERENCE_PATH, sep = "\t",
-                                              names = ["Chromosome", "Start", "End", "Flag"])
-        
-        return regulatory_elements    
-    
-    except:
-        print("ERROR: Could not read regulatory elements file.")
-        
 def clean_genes(gene_annotations):
     
     #Cleans genetic annotations dataframe by removing chromosomes that are not
@@ -213,6 +151,20 @@ def clean_genes(gene_annotations):
     gene_annotations = gene_annotations.rename(columns = {"Start" : "Gene_start", "End" : "Gene_end"})
     
     return gene_annotations
+
+def read_general_expression_data():
+    
+    #Assigns the expression-for-many-cell-types csv file to a pandas dataframe.
+        
+    print("Reading general expression file...")
+
+    try:
+        general_expression_data = pd.read_csv(GENERAL_EXPRESSION_BY_CELL_LINE_REFERENCE_PATH).transpose()
+        
+        return clean_general_expression_data(general_expression_data)  
+    
+    except:
+        print("ERROR: General expression data could not be read.")
 
 def clean_general_expression_data(general_expression_data):
     
@@ -235,8 +187,25 @@ def clean_general_expression_data(general_expression_data):
     general_expression_data = general_expression_data[["Gene_name", "General_gene_expression", "Mean", "Std", "Anomalous_score"]]
     general_expression_data = general_expression_data.drop_duplicates(keep = False, subset = ["Gene_name"])
     
-    return general_expression_data
+    return general_expression_data        
+        
+def read_specific_expression_data():
+    
+    #Assigns the expression-for-cell-line-of-interest csv file to a pandas dataframe.
+        
+    print("Reading specific expression file...")
 
+    try:
+        specific_expression_data = pd.read_csv(SPECIFIC_EXPRESSION_BY_CELL_LINE_REFERENCE_PATH,
+                                               sep = "\t",
+                                               names = ["Gene_name", "Specific_gene_expression"],
+                                               skiprows = 1)
+        
+        return clean_specific_expression_data(specific_expression_data)    
+    
+    except:
+        print("ERROR: Specific expression data could not be read.")
+        
 def clean_specific_expression_data(specific_expression_data):
     
     #Cleans the expression data specific to the cell line of interest by turning
@@ -245,28 +214,46 @@ def clean_specific_expression_data(specific_expression_data):
     
     print("Cleaning specific expression data...")
     
-    #specific_expression_data = specific_expression_data.drop(specific_expression_data[specific_expression_data["Specific_gene_expression"] == "-Inf"].index)
     specific_expression_data["Specific_gene_expression"] = specific_expression_data["Specific_gene_expression"].apply(lambda expression : 0 if expression == "-Inf" else pow(2, expression))
-    #specific_expression_data["Specific_gene_expression"] = specific_expression_data["Specific_gene_expression"].apply(lambda expression : np.NINF if expression == "-Inf" else expression)
     specific_expression_data = specific_expression_data.drop_duplicates(keep = False, subset = ["Gene_name"])
     
-    return specific_expression_data
+    return specific_expression_data     
+   
+def read_regulatory_elements():
+    
+    #Assigns the regulatory elements gff or bed file to a pandas dataframe.
+    
+    print("Reading regulatory elements file...")
 
-def clean_regulatory_elements(regulatory_elements):
+    try:
+        regulatory_elements = pd.read_csv(REGULATORY_ELEMENTS_ANNOTATION_REFERENCE_PATH, sep = "\t",
+                                              names = ["Chromosome", "Start", "End", "Flag"])
+        
+        return regulatory_elements    
+    
+    except:
+        print("ERROR: Could not read regulatory elements file.")
+
+def clean_regulatory_elements(regulatory_elements, element_type):
     
     #Clean the regulatory elements dataframe by removing "chr" from chromosome
-    #strings, including only regulatory elements from within flags of interest,
-    #separately creating a quiescent dataframe in the same
-    #way
+    #strings, including only regulatory elements from within flags of interest
     
-    print("Cleaning regulatory elements data...")
+    print("Cleaning " + element_type + " elements data...")
     
+    if element_type == "enhancer":
+        
+        flags_of_interest = ENHANCER_EPIGENETIC_FLAGS_OF_INTEREST
+        
+    elif element_type == "quiescent":
+    
+        flags_of_interest = QUIESCENT_EPIGENETIC_FLAGS_OF_INTEREST
+        
+    else: print("ERROR : Unrecognised regulatory element type.")
+        
     regulatory_elements["Chromosome"] = regulatory_elements["Chromosome"].apply(lambda x : x[3:])
-        
-    enhancers = regulatory_elements[regulatory_elements["Flag"].isin(ENHANCER_EPIGENETIC_FLAGS_OF_INTEREST)]
-    enhancers = enhancers.drop(["Flag"], axis = 1)
-
-    quiescent_regions = regulatory_elements[regulatory_elements["Flag"].isin(QUIESCENT_EPIGENETIC_FLAGS_OF_INTEREST)]
-    quiescent_regions = quiescent_regions.drop(["Flag"], axis = 1)
-        
-    return enhancers, quiescent_regions
+    
+    regulatory_elements = regulatory_elements[regulatory_elements["Flag"].isin(flags_of_interest)]
+    regulatory_elements = regulatory_elements.drop(["Flag"], axis = 1)
+    
+    return regulatory_elements
