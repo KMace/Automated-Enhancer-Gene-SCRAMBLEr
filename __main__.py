@@ -23,9 +23,7 @@ def main():
     gene_data = fm.find_interferring_genes(gene_data)
     gene_data = fm.find_search_windows(gene_data)
     
-    regulatory_elements = di.read_regulatory_elements()
-    enhancers = di.clean_regulatory_elements(regulatory_elements, element_type)
-    del regulatory_elements
+    enhancers = di.read_regulatory_elements()
     
     enhancer_overlaps = fm.find_element_overlaps_within_search_window(enhancers, gene_data)
     del enhancers
