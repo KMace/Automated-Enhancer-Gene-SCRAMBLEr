@@ -1,7 +1,6 @@
 import pandas as pd
 import pyranges as pr
 from sklearn.preprocessing import StandardScaler
-from sklearn.compose import ColumnTransformer
 import hashlib
 import sys
 import string
@@ -10,7 +9,11 @@ import random
 import data_initialisation as di
 import region_convolutions as rc
 import data_visualisation as dv
-    
+
+global INTERESTING_FEATURES
+
+INTERESTING_FEATURES = ["Std", "Anomalous_score", "Enhancer_count", "Enhancer_proportion", "Specific_gene_expression", "Gene_size"]
+
 def find_mean(expression_data):
     
     #Adds the mean of gene expression to the given expression data frame, giving
@@ -67,24 +70,47 @@ def find_interferring_genes(gene_data):
     gene_data["Start"] = gene_data["Gene_start"]
     gene_data["End"] = gene_data["Gene_end"]
     
-    interferring_genes_pr = pr.PyRanges(gene_data.loc[gene_data["Specific_gene_expression"] > di.CELL_LINE_SPECIFIC_EXPRESSION_THRESHOLD])
-    genes_pr = pr.PyRanges(gene_data)
-    genes_nearest_upstream_pr = genes_pr.nearest(interferring_genes_pr, how = "upstream", suffix = "_upstream_interferring_gene", overlap = di.INTERFERRING_GENE_OVERLAPS)
-    genes_nearest_downstream_pr = genes_pr.nearest(interferring_genes_pr, how = "downstream", suffix = "_downstream_interferring_gene", overlap = di.INTERFERRING_GENE_OVERLAPS)
+    interferring_genes_search = pr.PyRanges(
+        gene_data.loc[gene_data["Specific_gene_expression"] > di.CELL_LINE_SPECIFIC_EXPRESSION_THRESHOLD])
+    
+    gene_search = pr.PyRanges(gene_data)
+    genes_nearest_upstream_pr = gene_search.nearest(
+        interferring_genes_search, how = "upstream", 
+        suffix = "_upstream_interferring_gene", 
+        overlap = di.INTERFERRING_GENE_OVERLAPS)
+    
+    genes_nearest_downstream_pr = gene_search.nearest(
+        interferring_genes_search, how = "downstream", 
+        suffix = "_downstream_interferring_gene", 
+        overlap = di.INTERFERRING_GENE_OVERLAPS)
 
     genes_nearest_upstream = genes_nearest_upstream_pr.df
     genes_nearest_downstream = genes_nearest_downstream_pr.df
     
-    gene_data = pd.merge(gene_data, genes_nearest_upstream.loc[:, ["Gene_name", "Start_upstream_interferring_gene", "End_upstream_interferring_gene", "Gene_name_upstream_interferring_gene"]], on = "Gene_name", how = "inner")
-    gene_data = pd.merge(gene_data, genes_nearest_downstream.loc[:, ["Gene_name", "Start_downstream_interferring_gene", "End_downstream_interferring_gene", "Gene_name_downstream_interferring_gene"]], on = "Gene_name", how = "inner")
+    gene_data = pd.merge(gene_data, 
+                         genes_nearest_upstream.loc[:, ["Gene_name", 
+                                                        "Start_upstream_interferring_gene", 
+                                                        "End_upstream_interferring_gene", 
+                                                        "Gene_name_upstream_interferring_gene"]], 
+                                                        on = "Gene_name", 
+                                                        how = "inner")
+    gene_data = pd.merge(gene_data, 
+                         genes_nearest_downstream.loc[:, ["Gene_name", 
+                                                          "Start_downstream_interferring_gene", 
+                                                          "End_downstream_interferring_gene", 
+                                                          "Gene_name_downstream_interferring_gene"]], 
+                                                          on = "Gene_name", 
+                                                          how = "inner")
     
-    if di.INTERFERRING_GENE_OVERLAPS == False:
+    if not di.INTERFERRING_GENE_OVERLAPS:
         
-        gene_data = gene_data.loc[gene_data["End_upstream_interferring_gene"] < gene_data["Gene_start"]]
-        gene_data = gene_data.loc[gene_data["Start_downstream_interferring_gene"] > gene_data["Gene_end"]]
+        gene_data = gene_data.loc[
+            gene_data["End_upstream_interferring_gene"] < gene_data["Gene_start"]]
+        gene_data = gene_data.loc[
+            gene_data["Start_downstream_interferring_gene"] > gene_data["Gene_end"]]
         
-    gene_data.drop(["Start", "End"], axis = 1)
-        
+    gene_data.drop(["Start", "End"], axis = 1) 
+    
     return gene_data
 
 def find_search_windows(genes):
@@ -101,11 +127,30 @@ def find_search_windows(genes):
     elif (di.SEARCH_TYPE == "start_site"): downstream_search_start = 'Gene_start'
     else: print("ERROR : Invalid search type.")
         
-    genes["Search_window_start"] = genes.apply(lambda gene : gene["Gene_start"] - di.UPSTREAM_SEARCH if gene["Strand"] == "+" else gene["Gene_start"] - di.DOWNSTREAM_SEARCH, axis = 1)
-    genes["Search_window_end"] = genes.apply(lambda gene : gene[downstream_search_start] + di.DOWNSTREAM_SEARCH if gene["Strand"] == "+" else gene[downstream_search_start] + di.UPSTREAM_SEARCH, axis = 1)
-    genes["Search_window_start"] = genes.apply(lambda gene : 0 if gene["Gene_start"] < 0 else gene["Search_window_start"], axis = 1)
-    genes["Search_window_start"] = genes.apply(lambda gene : gene["End_upstream_interferring_gene"] if gene["Search_window_start"] < gene["End_upstream_interferring_gene"] else gene["Search_window_start"], axis = 1)
-    genes["Search_window_end"] = genes.apply(lambda gene : gene["Start_downstream_interferring_gene"] if gene["Search_window_end"] > gene["Start_downstream_interferring_gene"] else gene["Search_window_end"], axis = 1)
+    genes["Search_window_start"] = genes.apply(
+        lambda gene : gene["Gene_start"] - di.UPSTREAM_SEARCH 
+        if gene["Strand"] == "+" 
+        else gene["Gene_start"] - di.DOWNSTREAM_SEARCH, axis = 1)
+    
+    genes["Search_window_end"] = genes.apply(
+        lambda gene : gene[downstream_search_start] + di.DOWNSTREAM_SEARCH 
+        if gene["Strand"] == "+" 
+        else gene[downstream_search_start] + di.UPSTREAM_SEARCH, axis = 1)
+    
+    genes["Search_window_start"] = genes.apply(
+        lambda gene : 0 
+        if gene["Gene_start"] < 0 
+        else gene["Search_window_start"], axis = 1)
+    
+    genes["Search_window_start"] = genes.apply(
+        lambda gene : gene["End_upstream_interferring_gene"] 
+        if gene["Search_window_start"] < gene["End_upstream_interferring_gene"] 
+        else gene["Search_window_start"], axis = 1)
+    
+    genes["Search_window_end"] = genes.apply(
+        lambda gene : gene["Start_downstream_interferring_gene"] 
+        if gene["Search_window_end"] > gene["Start_downstream_interferring_gene"] 
+        else gene["Search_window_end"], axis = 1)
         
     genes["Search_window_size"] = (genes["Search_window_end"] - genes["Search_window_start"])
                 
@@ -122,9 +167,9 @@ def find_element_overlaps_within_search_window(elements, genes):
     genes["Start"] = genes["Search_window_start"]
     genes["End"] = genes["Search_window_end"]
     
-    search_pr = pr.PyRanges(genes)
-    elements_pr = pr.PyRanges(elements)
-    overlaps = search_pr.intersect(elements_pr, strandedness = False)
+    gene_search = pr.PyRanges(genes)
+    elements_search = pr.PyRanges(elements)
+    overlaps = gene_search.intersect(elements_search, strandedness = False)
     overlaps = overlaps.df
     
     genes.drop(["Start", "End"], axis = 1)
@@ -138,7 +183,11 @@ def count_overlaps_per_gene(genes, overlaps, element_type):
     print("Counting overlaps...")
 
     overlaps.drop(["Start", "End"], axis = 1)
-    genes = pd.merge(genes, overlaps.groupby("Gene_name").size().reset_index(name = (element_type + "_count")), on = "Gene_name", how = "inner")
+    genes = pd.merge(genes, 
+                     overlaps.groupby("Gene_name").size().reset_index(
+        name = (element_type + "_count")), 
+                     on = "Gene_name", 
+                     how = "inner")
     
     return genes
     
@@ -155,7 +204,7 @@ def find_nearby_enhancer_densities(gene_data, overlaps):
 
     return gene_data
     
-def calculate_interest_score(genes):
+def calculate_interest_score(gene_data):
     
     #Various attributes of each gene are scaled and normallised, before being
     #weighted and combined into an interest score. The export_gene_scores_report
@@ -164,31 +213,85 @@ def calculate_interest_score(genes):
     print("Scoring genes...")
     
     scaler = StandardScaler()
-    scaled_genes = genes.loc[:, ["Gene_name", "Std", "Anomalous_score", "Specific_gene_expression", "Enhancer_count", "Enhancer_proportion", "Gene_size"]]
-    scaler.fit(scaled_genes.loc[:, ["Std", "Anomalous_score", "Specific_gene_expression", "Enhancer_count", "Enhancer_proportion", "Gene_size"]])
-    scaled_genes.loc[:, ["Std", "Anomalous_score", "Specific_gene_expression", "Enhancer_count", "Enhancer_proportion", "Gene_size"]] = scaler.transform(scaled_genes[["Std", "Anomalous_score", "Specific_gene_expression", "Enhancer_count", "Enhancer_proportion", "Gene_size"]])
+    scaled_genes = gene_data.loc[:, (["Gene_name"] + INTERESTING_FEATURES)]
+    scaler.fit(scaled_genes.loc[:, INTERESTING_FEATURES])
+    scaled_genes.loc[:, INTERESTING_FEATURES] = scaler.transform(scaled_genes[INTERESTING_FEATURES])
     
-    dv.compare_metrics(scaled_genes, "Comparison of Metrics within Z-space", "metrics_comparison_zspace_keep_inf_log2")
+    dv.compare_metrics(scaled_genes, "Comparison of Metrics within Z-space", "metrics_comparison")
     
-    scaled_genes["Interest_score"] = 0
-    scaled_genes.loc[:, "Interest_score"] = scaled_genes.loc[:, "Interest_score"] + (scaled_genes.loc[:, "Std"] * di.STD_WEIGHT)
-    scaled_genes.loc[:, "Interest_score"] = scaled_genes.loc[:, "Interest_score"] + (scaled_genes.loc[:, "Anomalous_score"] * di.ANOMALOUS_EXPRESSION_WEIGHT)
-    scaled_genes.loc[:, "Interest_score"] = scaled_genes.loc[:, "Interest_score"] + (scaled_genes.loc[:, "Enhancer_count"] * di.ENHANCER_COUNT_WEIGHT)
-    scaled_genes.loc[:, "Interest_score"] = scaled_genes.loc[:, "Interest_score"] + (scaled_genes.loc[:, "Enhancer_proportion"] * di.ENHANCER_PROPORTION_WEIGHT)
-    scaled_genes.loc[:, "Interest_score"] = scaled_genes.loc[:, "Interest_score"] + (scaled_genes.loc[:, "Specific_gene_expression"] * di.CELL_LINE_EXPRESSION_WEIGHT)
-    scaled_genes.loc[:, "Interest_score"] = scaled_genes.loc[:, "Interest_score"] + (di.GENE_SIZE_WEIGHT / (scaled_genes.loc[:, "Gene_size"] + di.GENE_SIZE_WEIGHT))  
-    scaled_genes = scaled_genes.sort_values("Interest_score", ascending = False)
+    scaled_genes = scaled_genes.assign(
+        Interest_score = (
+            scaled_genes["Std"] * di.STD_WEIGHT +
+            scaled_genes["Anomalous_score"] * di.ANOMALOUS_EXPRESSION_WEIGHT +
+            scaled_genes["Enhancer_count"] * di.ENHANCER_COUNT_WEIGHT +
+            scaled_genes["Enhancer_proportion"] * di.ENHANCER_PROPORTION_WEIGHT +
+            scaled_genes["Specific_gene_expression"] * di.CELL_LINE_EXPRESSION_WEIGHT +
+            pow((2 * di.GENE_SIZE_WEIGHT), (scaled_genes["Gene_size"] * di.GENE_SIZE_WEIGHT * di.GENE_SIZE_WEIGHT))
+        )
+    ).sort_values("Interest_score", ascending=False)
     
-    genes = pd.merge(genes, scaled_genes.loc[:, ["Gene_name", "Interest_score"]], on = "Gene_name")
-    genes = genes.sort_values("Interest_score", ascending = False).reset_index()
+    gene_data = pd.merge(gene_data, scaled_genes.loc[:, ["Gene_name", "Interest_score"]], on = "Gene_name")
+    gene_data = iterate_through_hard_filters(gene_data)
+    gene_data = gene_data.sort_values("Interest_score", ascending = False).reset_index()
     
+    export_gene_scores_report(gene_data)
     
+    return gene_data
+
+def iterate_through_hard_filters(gene_data):
+    
+    #Calls apply_hard_filter for each feature's min and max filter
+    
+    print("Applying hard filters...")
+    
+    max_filters = [di.STD_MAX, 
+                   di.ANOMALOUS_EXPRESSION_MAX, 
+                   di.ENHANCER_COUNT_MAX, 
+                   di.ENHANCER_PROPORTION_MAX, 
+                   di.CELL_LINE_EXPRESSION_MAX, 
+                   di.GENE_SIZE_MAX]
+    
+    min_filters = [di.STD_MIN, 
+                   di.ANOMALOUS_EXPRESSION_MIN, 
+                   di.ENHANCER_COUNT_MIN, 
+                   di.ENHANCER_PROPORTION_MIN, 
+                   di.CELL_LINE_EXPRESSION_MIN, 
+                   di.GENE_SIZE_MIN]
+    
+    for feature in INTERESTING_FEATURES:
+        
+        gene_data = apply_hard_filter(gene_data, 
+                                      max_filters[INTERESTING_FEATURES.index(feature)], 
+                                      feature, "max")
+        
+        gene_data = apply_hard_filter(gene_data, 
+                                      min_filters[INTERESTING_FEATURES.index(feature)], 
+                                      feature, "min")
+    
+    return gene_data
+
+def apply_hard_filter(gene_data, filter, feature, minmax):
+
+    #Drops data above max filter or below min filter
+
+    if minmax == "max":
+        
+        if filter is not False: gene_data = gene_data.drop(gene_data[gene_data[feature] > filter].index)
+        
+    elif minmax == "min":
+
+        if filter is not False: gene_data = gene_data.drop(gene_data[gene_data[feature] < filter].index)
+    
+    else: 
+        print("ERROR : Could not identify minmax.")
     genes.loc[:, ["Gene_name", "Std", "Anomalous_score", "Specific_gene_expression", "Enhancer_count", "Enhancer_proportion", "Gene_size", "Interest_score"]].to_csv(di.RESULTS_DIRECTORY + "gene_scores.tsv", sep = "\t", index = True)
         
     return genes
     
+    return gene_data
+
 def export_gene_scores_report(sd, annomolous_score, enhancer_count, 
-                     enhancer_proportion, gene_expression, gene_size, threshold):
+                     enhancer_proportion, gene_expression, gene_size, thresholdgene_data):
     
     #Ideally this will not read from file but from passed argument
     
@@ -201,33 +304,27 @@ def export_gene_scores_report(sd, annomolous_score, enhancer_count,
     identifier = "." + get_random_string(8) + ".txt"
     weights = "weights: sd, annomolous_score, enhancer_count, enhancer_proportion, gene_expression, gene_size, threshold: " + str(sd) + ', ' + str(annomolous_score) + ', ' + str(enhancer_count) + ', ' + str(enhancer_proportion) + ', ' + str(gene_expression) + ', ' + str(gene_size) + ', ' + str(threshold)
     
-    file = open(di.GENE_PRIORITISATION_REPORT_DIRECTORY + identifier, "x") # create new unique file
-
-    with open((di.RESULTS_DIRECTORY + "gene_scores.tsv"), "r") as scores:
-        file.write(scores.read())
-        file.write(weights)
-
-    file.close()
+    checksum = generate_config_checksum()
     
-    #with open("config.json", "rb") as config:
-    #    for chunk in iter(lambda: config.read(4096), b""):
-    #        hash_md5.update(chunk)
-    #        
-    #with open("config.json", "r") as config: # this is the z score stuff
-    #    report_name = "gene_prioritisation_report_" + identifier + ".txt"
-    #    print("Report name ", report_name)
+    checksum = generate_config_checksum()
+    
+    with open(sys.argv[1], "r") as config:
+        
+        report_name = "gene_prioritisation_report_" + checksum.hexdigest() + ".txt"
+        report = open((di.GENE_PRIORITISATION_REPORT_DIRECTORY + report_name), "w")
+        report.write(config.read() + "\n")
+        report.close()
+        report = open((di.GENE_PRIORITISATION_REPORT_DIRECTORY + report_name), "a")
+        gene_data.loc[:, (["Gene_name"] + ["Interest_score"] + INTERESTING_FEATURES)].to_csv(
+            (di.GENE_PRIORITISATION_REPORT_DIRECTORY + report_name), sep = "\t", index = True, mode = "a")
+        report.close()
+        
+def generate_config_checksum():
 
-    #    report = open((di.GENE_PRIORITISATION_REPORT_DIRECTORY + report_name + identifier), "w")
-    #    report.write(config.read() + "\n")
-    #    
-    #    with open((di.RESULTS_DIRECTORY + "gene_scores.tsv"), "r") as scores:
-    #        report.write(scores.read())
-    #        
-    #    report.close()
-
-def get_random_string(length):
-    # choose from all lowercase letter
-    letters = string.ascii_lowercase
-    result_str = ''.join(random.choice(letters) for i in range(length))
-
-    return result_str
+    checksum = hashlib.md5()
+    
+    with open(sys.argv[1], "rb") as config:
+        for chunk in iter(lambda: config.read(4096), b""):
+            checksum.update(chunk)
+        
+    return checksum
